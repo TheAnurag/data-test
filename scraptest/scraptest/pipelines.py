@@ -6,7 +6,13 @@
 # See: https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 from  scrapy.exporters import JsonItemExporter
 import time
+import boto3
 
+
+AWS_ACCESS_KEY_ID = ''
+AWS_SECRET_ACCESS_KEY = ''
+AWS_BUCKET_NAME = 'aj-data-test'
+JSON_FILE_NAME = 'test-data.json'
 
 class CleansingPipeline(object):
 
@@ -20,21 +26,33 @@ class CleansingPipeline(object):
 class JsonExportPipeline(object):
 
     def __init__(self):
-    	fname = 'test-' + time.strftime('%Y%m%d-%H%M%S') + '.json'
-    	self.file = open(fname, 'wb')
+    	self.file = open(JSON_FILE_NAME, 'wb')
     	self.exporter = JsonItemExporter(self.file, encoding='utf-8', ensure_ascii=False)
 
-    def spider_opened(self, spider):
+    def open_spider(self, spider):
         self.exporter.start_exporting()
 
-    def spider_closed(self, spider):
+    def close_spider(self, spider):
         self.exporter.finish_exporting()
-        file = self.files.pop(spider)
-        file.close()
+        self.file.close()
 
     def process_item(self, item, spider):
         self.exporter.export_item(item)
         return item
+
+class S3Pipeline(object):
+
+    def open_spider(self, spider):
+        pass
+
+    def process_item(self, item, spider):
+        pass
+
+    def close_spider(self, spider): 
+        s3 = boto3.client('s3', 
+            aws_access_key_id='AKIAJCXTW37QIFRHKRPA',
+            aws_secret_access_key='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')
+        s3.upload_file(JSON_FILE_NAME, AWS_BUCKET_NAME, JSON_FILE_NAME)
 	
 
 class PrintPipeline(object):
